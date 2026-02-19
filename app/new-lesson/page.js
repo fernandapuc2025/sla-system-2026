@@ -1,90 +1,60 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabaseClient";
+'use client';
+import { useState } from 'react';
 
 export default function NewLesson() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [impact, setImpact] = useState("Médio");
-  const [areas, setAreas] = useState([]);
-  const [areaId, setAreaId] = useState(null);
-  const [operationTypes, setOperationTypes] = useState([]);
-  const [operationTypeId, setOperationTypeId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState('');
 
-  // Buscar áreas e tipos de operação do banco
-  useEffect(() => {
-    fetchAreas();
-    fetchOperationTypes();
-  }, []);
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  async function fetchAreas() {
-    const { data, error } = await supabase.from("areas").select("*");
-    if (!error) {
-      setAreas(data);
-      setAreaId(data[0]?.id || null);
+    console.log("Arquivo selecionado:", file.name);
+    setLoading(true);
+    setResult('Iniciando envio...');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      // Mudamos para o caminho completo relativo para evitar erro de rota
+      const response = await fetch('../api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log("Resposta do servidor recebida. Status:", response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Erro desconhecido');
+      }
+
+      const data = await response.json();
+      setResult(data.analysis);
+      
+    } catch (error) {
+      console.error("Erro no clique:", error);
+      alert("Houve um erro: " + error.message); // Isso vai abrir uma janelinha no seu navegador
+      setResult('Erro: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-  }
-
-  async function fetchOperationTypes() {
-    const { data, error } = await supabase.from("operation_types").select("*");
-    if (!error) {
-      setOperationTypes(data);
-      setOperationTypeId(data[0]?.id || null);
-    }
-  }
-
-  async function submitLesson(e) {
-    e.preventDefault();
-    const { error } = await supabase.from("lessons").insert([
-      {
-        title,
-        description,
-        impact,
-        area_id: areaId,
-        operation_type: operationTypeId,
-      },
-    ]);
-    if (!error) alert("Lição criada com sucesso!");
-  }
+  };
 
   return (
-    <form onSubmit={submitLesson}>
-      <input
-        placeholder="Título"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
-      />
-      <textarea
-        placeholder="Descrição"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        required
-      />
-      <select value={impact} onChange={(e) => setImpact(e.target.value)}>
-        <option>Baixo</option>
-        <option>Médio</option>
-        <option>Alto</option>
-      </select>
-      <select value={areaId} onChange={(e) => setAreaId(Number(e.target.value))}>
-        {areas.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-      <select
-        value={operationTypeId}
-        onChange={(e) => setOperationTypeId(Number(e.target.value))}
-      >
-        {operationTypes.map((op) => (
-          <option key={op.id} value={op.id}>
-            {op.name}
-          </option>
-        ))}
-      </select>
-      <button type="submit">Criar Lição</button>
-    </form>
+    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>📄 Analisador de Lições</h1>
+      <div style={{ border: '2px dashed #ccc', padding: '20px', textAlign: 'center', borderRadius: '10px' }}>
+        <input type="file" accept="application/pdf" onChange={handleFileUpload} disabled={loading} />
+      </div>
+      {loading && <p style={{ color: 'blue' }}>⏳ Processando...</p>}
+      {result && (
+        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
+          <strong>Resultado:</strong>
+          <p style={{ whiteSpace: 'pre-wrap' }}>{result}</p>
+        </div>
+      )}
+    </div>
   );
 }
