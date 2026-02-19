@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { analisarDocumento } from '@/lib/gemini';
+import { analisarDocumento } from '../../../lib/gemini';
 import pdf from 'pdf-parse';
 
 export async function POST(request) {
