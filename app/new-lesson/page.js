@@ -18,7 +18,7 @@ export default function NewLesson() {
 
     try {
       // Mudamos para o caminho completo relativo para evitar erro de rota
-      const response = await fetch('../api/analyze', {
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData,
       });
