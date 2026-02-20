@@ -1,12 +1,36 @@
 'use client';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
-  
-  // Não mostra a sidebar na tela de login
-  if (pathname === '/login') return <html lang="pt-br"><body>{children}</body></html>;
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    // Verifica se o usuário está logado
+    const userSession = localStorage.getItem('isLoggedIn');
+    
+    if (!userSession && pathname !== '/login') {
+      // Se não estiver logado e não estiver na página de login, redireciona
+      router.push('/login');
+    } else {
+      setIsAuthorized(true);
+    }
+  }, [pathname, router]);
+
+  // Se for a página de login, renderiza sem a sidebar
+  if (pathname === '/login') {
+    return (
+      <html lang="pt-br">
+        <body>{children}</body>
+      </html>
+    );
+  }
+
+  // Enquanto verifica a autorização, não mostra o conteúdo (evita o "flicker")
+  if (!isAuthorized) return <html lang="pt-br"><body></body></html>;
 
   const menuItems = [
     { section: 'ESTRATÉGICO', items: [
@@ -26,11 +50,15 @@ export default function RootLayout({ children }) {
     ]},
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    router.push('/login');
+  };
+
   return (
     <html lang="pt-br">
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', display: 'flex', backgroundColor: '#f8fafc' }}>
         
-        {/* SIDEBAR */}
         <nav style={{ 
           width: '280px', height: '100vh', backgroundColor: '#0f172a', 
           color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed' 
@@ -65,12 +93,18 @@ export default function RootLayout({ children }) {
             ))}
           </div>
 
-          <Link href="/settings" style={{ padding: '20px', borderTop: '1px solid #1e293b', textDecoration: 'none', color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
-            <span style={{ marginRight: '10px' }}>⚙️</span> Configurações
-          </Link>
+          <button 
+            onClick={handleLogout}
+            style={{ 
+              padding: '20px', borderTop: '1px solid #1e293b', background: 'none', 
+              color: '#ef4444', borderRight: 'none', borderLeft: 'none', borderBottom: 'none',
+              display: 'flex', alignItems: 'center', cursor: 'pointer', width: '100%',
+              fontSize: '14px', fontWeight: 'bold'
+            }}>
+            <span style={{ marginRight: '10px' }}>🚪</span> Sair do Sistema
+          </button>
         </nav>
 
-        {/* ÁREA DE CONTEÚDO */}
         <main style={{ marginLeft: '280px', width: 'calc(100% - 280px)', minHeight: '100vh' }}>
           {children}
         </main>
