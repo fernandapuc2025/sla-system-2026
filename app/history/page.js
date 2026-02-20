@@ -1,82 +1,143 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 
-export default function OperationalRecords() {
+export default function HistoryWithFilters() {
   const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para os filtros
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('Todos');
+  const [filterStatus, setFilterStatus] = useState('Todos');
 
   useEffect(() => {
-    async function fetchRecords() {
-      // Busca os relatos salvos no Supabase
+    async function fetchHistory() {
       const { data, error } = await supabase
         .from('analises')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      if (!error) setRecords(data);
+
+      if (!error && data) {
+        // Preparar os dados fazendo o parse do JSON da IA
+        const prepared = data.map(item => {
+          try {
+            const parsed = JSON.parse(item.insight_ia);
+            return { ...item, ia: parsed };
+          } catch (e) {
+            return { ...item, ia: {} };
+          }
+        });
+        setRecords(prepared);
+        setFilteredRecords(prepared);
+      }
       setLoading(false);
     }
-    fetchRecords();
+    fetchHistory();
   }, []);
 
-  const getSeverityStyle = (sentiment) => {
-    return sentiment === 'Crítico' 
-      ? { color: '#ef4444', bg: '#fef2f2', label: 'ALTA' } 
-      : { color: '#64748b', bg: '#f8fafc', label: 'NORMAL' };
-  };
+  // Lógica de Filtragem
+  useEffect(() => {
+    let result = records;
+
+    if (search) {
+      result = result.filter(r => 
+        r.nome_arquivo.toLowerCase().includes(search.toLowerCase()) || 
+        r.ia.titulo_sintetico?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (filterCategory !== 'Todos') {
+      result = result.filter(r => r.ia.categoria_licao === filterCategory);
+    }
+
+    if (filterStatus !== 'Todos') {
+      result = result.filter(r => r.sentimento === filterStatus);
+    }
+
+    setFilteredRecords(result);
+  }, [search, filterCategory, filterStatus, records]);
 
   return (
     <div style={{ padding: '30px' }}>
-      <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b', margin: 0 }}>🧠 Relatos Operacionais</h1>
-        <p style={{ color: '#64748b', marginTop: '5px' }}>Camada Empírica: Registro sistemático de incidentes e níveis de fricção.</p>
+      <header style={{ marginBottom: '30px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b' }}>🗄️ Repositório de Inteligência</h1>
+        <p style={{ color: '#64748b' }}>Gestão e consulta de relatos operacionais processados.</p>
       </header>
 
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-            <tr>
-              <th style={{ padding: '20px', fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>DATA / HORA</th>
-              <th style={{ padding: '20px', fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>TÍTULO DO RELATO</th>
-              <th style={{ padding: '20px', fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>SEVERIDADE</th>
-              <th style={{ padding: '20px', fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>AÇÃO</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Carregando base empírica...</td></tr>
-            ) : records.map((rec) => {
-              const style = getSeverityStyle(rec.sentimento);
-              return (
-                <tr key={rec.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }}>
-                  <td style={{ padding: '20px', fontSize: '13px', color: '#64748b' }}>
-                    {new Date(rec.created_at).toLocaleString('pt-BR')}
-                  </td>
-                  <td style={{ padding: '20px', fontWeight: '600', color: '#0f172a' }}>
-                    {rec.nome_arquivo.replace('.pdf', '')}
-                  </td>
-                  <td style={{ padding: '20px' }}>
-                    <span style={{ 
-                      padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800',
-                      backgroundColor: style.bg, color: style.text 
-                    }}>
-                      {style.label}
-                    </span>
-                  </td>
-                  <td style={{ padding: '20px' }}>
-                    <Link href={`/history/${rec.id}`} style={{ 
-                      color: '#6366f1', textDecoration: 'none', fontSize: '13px', fontWeight: 'bold' 
-                    }}>
-                      Analisar Fricção →
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* BARRA DE FILTROS */}
+      <div style={{ 
+        display: 'flex', gap: '15px', marginBottom: '30px', padding: '20px', 
+        backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' 
+      }}>
+        <input 
+          type="text" 
+          placeholder="Pesquisar por título ou ficheiro..." 
+          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        
+        <select 
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
+          <option value="Todos">Todas as Categorias</option>
+          <option value="Comando e Controle (C2)">Comando e Controle (C2)</option>
+          <option value="Logística">Logística</option>
+          <option value="Inteligência">Inteligência</option>
+          <option value="Doutrina">Doutrina</option>
+        </select>
+
+        <select 
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="Todos">Todos os Status</option>
+          <option value="Crítico">Crítico</option>
+          <option value="Atenção">Atenção</option>
+          <option value="Normal">Normal</option>
+        </select>
+      </div>
+
+      {/* LISTA DE RESULTADOS */}
+      <div style={{ display: 'grid', gap: '15px' }}>
+        {loading ? <p>A carregar base de dados...</p> : 
+         filteredRecords.map((record) => (
+          <Link key={record.id} href={`/history/${record.id}`} style={{ textDecoration: 'none' }}>
+            <div style={{ 
+              backgroundColor: 'white', padding: '20px', borderRadius: '12px', 
+              border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', transition: '0.2s'
+            }} 
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+            >
+              <div>
+                <h4 style={{ margin: '0 0 5px 0', color: '#1e293b' }}>
+                  {record.ia.titulo_sintetico || record.nome_arquivo}
+                </h4>
+                <div style={{ display: 'flex', gap: '15px', fontSize: '12px', color: '#64748b' }}>
+                  <span>📅 {new Date(record.created_at).toLocaleDateString()}</span>
+                  <span>📂 {record.ia.categoria_licao || 'S/ Cat'}</span>
+                  <span>📊 Fricção: {record.ia.indicador_friccao}/10</span>
+                </div>
+              </div>
+              
+              <div style={{ 
+                padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
+                backgroundColor: record.sentimento === 'Crítico' ? '#fee2e2' : '#f1f5f9',
+                color: record.sentimento === 'Crítico' ? '#991b1b' : '#64748b'
+              }}>
+                {record.sentimento?.toUpperCase()}
+              </div>
+            </div>
+          </Link>
+        ))}
+        {!loading && filteredRecords.length === 0 && (
+          <p style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>Nenhum relato corresponde aos filtros aplicados.</p>
+        )}
       </div>
     </div>
   );
