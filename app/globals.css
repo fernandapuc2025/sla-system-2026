@@ -1,0 +1,75 @@
+/* Importação de fonte profissional */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+:root {
+  --primary: #0f172a;    /* Azul Marinho Profundo */
+  --secondary: #1e293b;  /* Azul Petróleo */
+  --accent: #2563eb;     /* Azul Royal (Ação) */
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --bg-app: #f8fafc;
+  --white: #ffffff;
+  --border: #e2e8f0;
+  --danger: #ef4444;
+  --success: #10b981;
+  --warning: #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+}
+
+/* Estilização de Scrollbar para parecer Software Moderno */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Transições Suaves para botões e links */
+a, button {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Padronização de Títulos */
+h1, h2, h3, h4 {
+  letter-spacing: -0.025em;
+}
+
+/* Efeito de Hover nas tabelas de dados */
+table tr:hover {
+  background-color: #f1f5f9;
+}
+
+/* Estilo para inputs de formulário */
+input, select, textarea {
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Card base para consistência */
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
