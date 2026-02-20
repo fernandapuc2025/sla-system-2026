@@ -1,30 +1,48 @@
 import { NextResponse } from 'next/server';
 import { analisarDocumento } from '../../../lib/gemini';
-
-export const dynamic = 'force-dynamic';
+import { supabase } from '../../../lib/supabaseClient'; // Importando seu cliente Supabase
+import pdf from 'pdf-parse/lib/pdf-parse.js';
 
 export async function POST(request) {
   try {
-    console.log("Iniciando teste de diagnóstico...");
-    
-    // Texto simples para testar a conexão
-    const textoTeste = "Olá Gemini, responda apenas 'CONEXAO_OK' se você estiver me ouvindo.";
-    
-    const analise = await analisarDocumento(textoTeste);
-    
-    return NextResponse.json({ 
-      analysis: "SUCESSO! A IA respondeu: " + analise 
-    });
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file) return NextResponse.json({ error: "Arquivo não enviado." }, { status: 400 });
+
+    // 1. Extração de texto
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const pdfData = await pdf(buffer);
+    const textoExtraido = pdfData.text;
+
+    // 2. Análise da IA
+    const analiseBruta = await analisarDocumento(textoExtraido);
+
+    // 3. Organização simplificada dos dados (Parse manual do prompt)
+    const sentimento = analiseBruta.match(/SENTIMENTO:\s*(.*)/)?.[1] || "Neutro";
+    const categoria = analiseBruta.match(/CATEGORIA:\s*(.*)/)?.[1] || "Geral";
+
+    // 4. Gravação no Supabase
+    const { data, error } = await supabase
+      .from('analises')
+      .insert([
+        { 
+          nome_arquivo: file.name,
+          conteudo_original: textoExtraido.substring(0, 5000), // Limite de segurança
+          insight_ia: analiseBruta,
+          sentimento: sentimento.trim(),
+          categoria: categoria.trim(),
+          usuario_email: "fernanda@exemplo.com" // Depois pegaremos do login
+        }
+      ]);
+
+    if (error) throw error;
+
+    return NextResponse.json({ analysis: analiseBruta });
 
   } catch (error) {
-    // Aqui pegamos o "segredo" do erro
-    console.error("ERRO COMPLETO CAPTURADO:", error);
-    
-    return NextResponse.json({ 
-      error: "ERRO DE CHAVE OU IA", 
-      mensagem_real: error.message, // O que o Google disse
-      causa: error.cause ? String(error.cause) : "Causa não especificada",
-      dica: "Verifique se a API Key no Vercel está sem espaços e se você aceitou os termos no Google AI Studio."
-    }, { status: 500 });
+    console.error("Erro na operação:", error);
+    return NextResponse.json({ error: "Falha ao processar e salvar.", message: error.message }, { status: 500 });
   }
 }
