@@ -5,21 +5,26 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    console.log("Testando comunicação direta com a IA...");
+    console.log("Iniciando teste de diagnóstico...");
     
-    // TESTE: Ignoramos o PDF por um momento e enviamos um texto fixo
-    const textoParaTeste = "O projeto atrasou porque a equipe de TI não recebeu os acessos a tempo.";
+    // Texto simples para testar a conexão
+    const textoTeste = "Olá Gemini, responda apenas 'CONEXAO_OK' se você estiver me ouvindo.";
     
-    const analise = await analisarDocumento(textoParaTeste);
+    const analise = await analisarDocumento(textoTeste);
     
     return NextResponse.json({ 
-      analysis: "TESTE DE CONEXÃO OK! A IA disse: " + analise 
+      analysis: "SUCESSO! A IA respondeu: " + analise 
     });
 
   } catch (error) {
+    // Aqui pegamos o "segredo" do erro
+    console.error("ERRO COMPLETO CAPTURADO:", error);
+    
     return NextResponse.json({ 
       error: "ERRO DE CHAVE OU IA", 
-      message: error.message 
+      mensagem_real: error.message, // O que o Google disse
+      causa: error.cause ? String(error.cause) : "Causa não especificada",
+      dica: "Verifique se a API Key no Vercel está sem espaços e se você aceitou os termos no Google AI Studio."
     }, { status: 500 });
   }
 }
