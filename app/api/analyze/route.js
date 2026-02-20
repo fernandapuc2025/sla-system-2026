@@ -34,7 +34,11 @@ export async function POST(request) {
     return NextResponse.json({ analysis: analise });
 
   } catch (error) {
-    console.error("Erro Geral API:", error);
-    return NextResponse.json({ error: "Erro na análise", details: error.message }, { status: 500 });
-  }
+    console.error("ERRO DETALHADO:", error);
+    // Isso vai mostrar o erro real na tela para você copiar e me mandar
+    return NextResponse.json({ 
+      error: "Erro detalhado", 
+      message: error.message,
+      stack: error.stack?.substring(0, 100) 
+    }, { status: 500 });
 }
