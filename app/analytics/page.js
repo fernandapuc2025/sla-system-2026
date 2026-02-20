@@ -1,94 +1,108 @@
 'use client';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export default function AnalyticsMatrix() {
-  // Dados simulando o cruzamento da sua tese
-  const dataPoints = [
-    { name: 'Missão A', x: 80, y: 75, size: 20, color: '#ef4444', label: 'Zona Caótica' },
-    { name: 'Missão B', x: 90, y: 20, size: 15, color: '#3b82f6', label: 'Complexo Estável' },
-    { name: 'Missão C', x: 30, y: 85, size: 12, color: '#f59e0b', label: 'Instabilidade Tática' },
-    { name: 'Missão D', x: 20, y: 15, size: 10, color: '#10b981', label: 'Zona de Rotina' },
-  ];
+  const [points, setPoints] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadChartData() {
+      const { data, error } = await supabase
+        .from('analises')
+        .select('id, nome_arquivo, insight_ia');
+
+      if (!error && data) {
+        const mappedPoints = data.map(item => {
+          try {
+            const parsed = JSON.parse(item.insight_ia);
+            return {
+              id: item.id,
+              name: parsed.titulo_sintetico || item.nome_arquivo,
+              x: parsed.indicador_complexidade || 0, // Complexidade
+              y: parsed.indicador_friccao || 0,      // Fricção
+              size: 15,
+              category: parsed.categoria_licao
+            };
+          } catch (e) {
+            return null;
+          }
+        }).filter(p => p !== null);
+        
+        setPoints(mappedPoints);
+      }
+      setLoading(false);
+    }
+    loadChartData();
+  }, []);
 
   return (
     <div style={{ padding: '30px' }}>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b' }}>📊 Matriz Complexidade × Fricção</h1>
-        <p style={{ color: '#64748b' }}>Análise comparada de perfis operacionais e detecção de padrões estruturais.</p>
+        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b' }}>📊 Matriz de Correlação: Complexidade vs Fricção</h1>
+        <p style={{ color: '#64748b' }}>Visualização em tempo real da dispersão de incidentes baseada na análise da IA.</p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '30px' }}>
+      <div style={{ 
+        backgroundColor: 'white', padding: '40px', borderRadius: '20px', 
+        border: '1px solid #e2e8f0', position: 'relative', height: '600px',
+        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+      }}>
         
-        {/* ÁREA DO GRÁFICO */}
-        <div style={{ 
-          backgroundColor: 'white', 
-          height: '500px', 
-          borderRadius: '16px', 
-          border: '1px solid #e2e8f0',
-          position: 'relative',
-          padding: '40px',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* EIXO Y - FRICÇÃO */}
-          <div style={{ position: 'absolute', left: '15px', top: '50%', transform: 'rotate(-90deg) translateY(-50%)', fontWeight: 'bold', fontSize: '12px', color: '#64748b' }}>
-            ▲ FRICÇÃO EMERGENTE (IFR)
+        {/* EIXOS DO GRÁFICO */}
+        <div style={{ position: 'absolute', left: '60px', bottom: '60px', right: '40px', top: '40px', borderLeft: '2px solid #cbd5e1', borderBottom: '2px solid #cbd5e1' }}>
+          
+          {/* RÓTULOS DOS EIXOS */}
+          <div style={{ position: 'absolute', bottom: '-40px', left: '50%', transform: 'translateX(-50%)', fontWeight: 'bold', color: '#64748b' }}>
+            COMPLEXIDADE ESTRUTURAL (1-10)
+          </div>
+          <div style={{ position: 'absolute', left: '-50px', top: '50%', transform: 'rotate(-90deg) translateX(50%)', fontWeight: 'bold', color: '#64748b' }}>
+            NÍVEL DE FRICÇÃO (1-10)
           </div>
 
-          {/* EIXO X - COMPLEXIDADE */}
-          <div style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)', fontWeight: 'bold', fontSize: '12px', color: '#64748b' }}>
-            COMPLEXIDADE ESTRUTURAL (ICM) ►
-          </div>
+          {/* PLOTAGEM DOS PONTOS DINÂMICOS */}
+          {points.map((point) => (
+            <div
+              key={point.id}
+              title={`${point.name} | C:${point.x} F:${point.y}`}
+              style={{
+                position: 'absolute',
+                left: `${(point.x / 10) * 100}%`,
+                bottom: `${(point.y / 10) * 100}%`,
+                width: '16px',
+                height: '16px',
+                backgroundColor: point.y > 7 ? '#ef4444' : '#3b82f6',
+                borderRadius: '50%',
+                transform: 'translate(-50%, 50%)',
+                cursor: 'pointer',
+                transition: '0.3s',
+                border: '2px solid white',
+                boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+              }}
+              onMouseEnter={(e) => e.target.style.transform = 'translate(-50%, 50%) scale(1.5)'}
+              onMouseLeave={(e) => e.target.style.transform = 'translate(-50%, 50%) scale(1)'}
+            />
+          ))}
 
-          {/* GRID DO GRÁFICO */}
-          <div style={{ 
-            flex: 1, 
-            borderLeft: '2px solid #cbd5e1', 
-            borderBottom: '2px solid #cbd5e1',
-            position: 'relative',
-            backgroundSize: '50px 50px',
-            backgroundImage: 'linear-gradient(to right, #f1f5f9 1px, transparent 1px), linear-gradient(to top, #f1f5f9 1px, transparent 1px)'
-          }}>
-            {dataPoints.map((point, i) => (
-              <div 
-                key={i}
-                style={{
-                  position: 'absolute',
-                  left: `${point.x}%`,
-                  bottom: `${point.y}%`,
-                  width: `${point.size}px`,
-                  height: `${point.size}px`,
-                  backgroundColor: point.color,
-                  borderRadius: '50%',
-                  transform: 'translate(-50%, 50%)',
-                  cursor: 'pointer',
-                  boxShadow: `0 0 15px ${point.color}66`
-                }}
-                title={`${point.name}: ${point.label}`}
-              />
-            ))}
-          </div>
+          {/* QUADRANTES INDICATIVOS */}
+          <div style={{ position: 'absolute', top: 10, right: 10, fontSize: '10px', color: '#f87171', fontWeight: 'bold' }}>ZONA CRÍTICA</div>
+          <div style={{ position: 'absolute', bottom: 10, left: 10, fontSize: '10px', color: '#94a3b8', fontWeight: 'bold' }}>ESTABILIDADE</div>
         </div>
 
-        {/* LEGENDA E INSIGHTS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>Perfis Identificados</h4>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <li><span style={{ color: '#ef4444' }}>●</span> <strong>Caótico:</strong> Alta densidade e atrito.</li>
-              <li><span style={{ color: '#3b82f6' }}>●</span> <strong>Institucional:</strong> Complexo mas gerível.</li>
-              <li><span style={{ color: '#f59e0b' }}>●</span> <strong>Volátil:</strong> Baixa estrutura, alto atrito.</li>
-              <li><span style={{ color: '#10b981' }}>●</span> <strong>Estável:</strong> Operação de baixa intensidade.</li>
-            </ul>
+        {loading && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.8)' }}>
+            Processando matriz analítica...
           </div>
+        )}
+      </div>
 
-          <div style={{ backgroundColor: '#1e293b', color: 'white', padding: '20px', borderRadius: '12px' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#94a3b8' }}>Conclusão da IA</h4>
-            <p style={{ fontSize: '13px', lineHeight: '1.5' }}>
-              Padrões estruturais indicam que missões com <strong>ICM > 7.5</strong> tendem a apresentar <strong>Fricção Exponencial</strong> quando o número de Atores Governamentais excede 5 unidades.
-            </p>
-          </div>
+      <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div> Fricção Severa (>7)
         </div>
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></div> Fricção Controlada
+        </div>
       </div>
     </div>
   );
