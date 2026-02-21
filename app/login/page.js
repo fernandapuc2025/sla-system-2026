@@ -23,7 +23,7 @@ export default function Login() {
       alert('Erro na autenticação: ' + error.message);
       setLoading(false);
     } else {
-      router.push('/'); // Agora sim, redireciona com sessão ativa
+      router.push('/'); // Redireciona com sessão ativa
     }
   };
 
@@ -44,26 +44,12 @@ export default function Login() {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input 
-            type="email" placeholder="E-mail institucional" required
+            id="email"
+            name="email"
+            type="email" 
+            placeholder="E-mail institucional" 
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-          />
-          <input 
-            type="password" placeholder="Senha" required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-          />
-          <button type="submit" disabled={loading} style={{ 
-            backgroundColor: loading ? '#94a3b8' : '#2563eb', 
-            color: 'white', border: 'none', padding: '14px', 
-            borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer'
-          }}>
-            {loading ? 'Verificando...' : 'Autenticar no Sistema'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
+            autoComplete="email"
+            style
