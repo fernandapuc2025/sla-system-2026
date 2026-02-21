@@ -2,28 +2,54 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '../lib/supabaseClient'; // Importação necessária
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userSession = localStorage.getItem('isLoggedIn');
-    if (!userSession && pathname !== '/login') {
-      router.push('/login');
-    } else {
-      setIsAuthorized(true);
-    }
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session && pathname !== '/login') {
+        router.push('/login');
+      } else {
+        setIsAuthorized(true);
+      }
+      setLoading(false);
+    };
+
+    checkSession();
+
+    // Escuta mudanças na autenticação (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setIsAuthorized(false);
+        router.push('/login');
+      } else if (session) {
+        setIsAuthorized(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [pathname, router]);
 
+  // Se estiver carregando a sessão inicial
+  if (loading && pathname !== '/login') {
+    return <html lang="pt-br"><body><div style={{display:'flex', height:'100vh', alignItems:'center', justifyContent:'center', background:'#0f172a', color:'white'}}>Carregando...</div></body></html>;
+  }
+
+  // Layout simples para a página de login
   if (pathname === '/login') {
     return <html lang="pt-br"><body>{children}</body></html>;
   }
 
+  // Se não estiver autorizado, não mostra o menu
   if (!isAuthorized) return <html lang="pt-br"><body></body></html>;
 
-  // Definição das Rotas Baseadas nos 5 Bancos do Sistema
   const navLinks = [
     { name: '🧭 Dashboard', path: '/' },
     { name: '🌐 Missões (ICM)', path: '/missions' },
@@ -34,16 +60,14 @@ export default function RootLayout({ children }) {
     { name: '📄 Nova Ingestão', path: '/new-lesson' },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     router.push('/login');
   };
 
   return (
     <html lang="pt-br">
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', backgroundColor: '#f1f5f9' }}>
-        
-        {/* CABEÇALHO SUPERIOR (HEADER) */}
         <header style={{ 
           backgroundColor: '#0f172a', 
           color: 'white', 
@@ -63,7 +87,6 @@ export default function RootLayout({ children }) {
               <span style={{ fontSize: '10px', color: '#94a3b8' }}>SISTEMA DE APOIO À DECISÃO</span>
             </div>
 
-            {/* LINKS DE NAVEGAÇÃO INTERNOS */}
             <nav style={{ display: 'flex', gap: '15px' }}>
               {navLinks.map((link) => (
                 <Link key={link.path} href={link.path} style={{ textDecoration: 'none' }}>
@@ -99,13 +122,11 @@ export default function RootLayout({ children }) {
           </button>
         </header>
 
-        {/* ÁREA DE CONTEÚDO PRINCIPAL */}
         <main style={{ padding: '40px', minHeight: 'calc(100vh - 70px)' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             {children}
           </div>
         </main>
-
       </body>
     </html>
   );
