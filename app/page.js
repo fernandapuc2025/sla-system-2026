@@ -1,9 +1,56 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../lib/supabaseClient';
+
 export const dynamic = 'force-dynamic';
+
 export default function CommandCenter() {
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    async function checkUser() {
+      // Verifica se existe uma sessão ativa no Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Se não houver sessão, manda para o login
+        router.push('/login');
+      } else {
+        // Se houver, libera o acesso e encerra o estado de carregamento
+        setUser(session.user);
+        setLoading(false);
+      }
+    }
+    checkUser();
+  }, [router]);
+
+  // Enquanto verifica a sessão, mostra uma tela de transição suave
+  if (loading) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        backgroundColor: '#0f172a', 
+        color: 'white',
+        fontFamily: 'sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: '20px' }}>⌛</div>
+          <p style={{ fontSize: '14px', letterSpacing: '1px' }}>AUTENTICANDO NO CENTRO DE COMANDO...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se chegou aqui, o usuário está logado. Renderiza o Dashboard original:
   return (
-    <div style={{ padding: '30px' }}>
+    <div style={{ padding: '30px', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ marginBottom: '40px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b' }}>🧭 Centro de Comando Operacional</h1>
         <p style={{ color: '#64748b' }}>Monitoramento de Governança e Dinâmicas de Fricção em Tempo Real.</p>
