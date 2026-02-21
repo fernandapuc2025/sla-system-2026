@@ -1,11 +1,11 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabaseClient'; // Importando o Supabase real
+import { supabase } from '../../lib/supabaseClient';
 
 export default function Login() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // Estado para a senha
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -13,7 +13,6 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    // Chamada real ao Supabase
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -23,7 +22,7 @@ export default function Login() {
       alert('Erro na autenticação: ' + error.message);
       setLoading(false);
     } else {
-      router.push('/'); // Redireciona com sessão ativa
+      router.push('/');
     }
   };
 
@@ -52,4 +51,28 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
-            style
+            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+          />
+          <input 
+            id="password"
+            name="password"
+            type="password" 
+            placeholder="Senha" 
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+          />
+          <button type="submit" disabled={loading} style={{ 
+            backgroundColor: loading ? '#94a3b8' : '#2563eb', 
+            color: 'white', border: 'none', padding: '14px', 
+            borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer'
+          }}>
+            {loading ? 'Verificando...' : 'Autenticar no Sistema'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
