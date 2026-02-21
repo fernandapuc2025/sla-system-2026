@@ -1,4 +1,6 @@
 'use client';
+
+export const dynamic = 'force-dynamic';
 export default function CommandCenter() {
   return (
     <div style={{ padding: '30px' }}>
