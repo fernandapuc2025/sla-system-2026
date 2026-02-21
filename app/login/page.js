@@ -1,14 +1,30 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient'; // Importando o Supabase real
 
 export default function Login() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState(''); // Estado para a senha
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    router.push('/'); // Redireciona para o Centro de Comando
+    setLoading(true);
+
+    // Chamada real ao Supabase
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert('Erro na autenticação: ' + error.message);
+      setLoading(false);
+    } else {
+      router.push('/'); // Agora sim, redireciona com sessão ativa
+    }
   };
 
   return (
@@ -29,18 +45,22 @@ export default function Login() {
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input 
             type="email" placeholder="E-mail institucional" required
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
           />
           <input 
             type="password" placeholder="Senha" required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
           />
-          <button type="submit" style={{ 
-            backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '14px', 
+          <button type="submit" disabled={loading} style={{ 
+            backgroundColor: loading ? '#94a3b8' : '#2563eb', 
+            color: 'white', border: 'none', padding: '14px', 
             borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer'
           }}>
-            Autenticar no Sistema
+            {loading ? 'Verificando...' : 'Autenticar no Sistema'}
           </button>
         </form>
       </div>
