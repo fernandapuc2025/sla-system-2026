@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+export const dynamic = 'force-dynamic';
 export default function MissionAnalytics() {
   const [missions, setMissions] = useState([]);
   const [loading, setLoading] = useState(true);
