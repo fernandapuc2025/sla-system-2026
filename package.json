@@ -11,7 +11,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
     "@supabase/supabase-js": "latest",
-    "next": "^19.0.0",
+    "next": "latest",
     "pdf-parse": "^1.1.1",
     "react": "latest",
     "react-dom": "latest"
