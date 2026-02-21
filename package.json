@@ -9,9 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
+    "@google/generative-ai": "latest",
     "@supabase/supabase-js": "latest",
-    "next": "15.0.3",
+    "next": "15.0.10",
     "pdf-parse": "^1.1.1",
     "react": "latest",
     "react-dom": "latest"
