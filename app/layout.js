@@ -1,133 +1,78 @@
 'use client';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { supabase } from '../lib/supabaseClient'; // Importação necessária
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabaseClient';
 
-export default function RootLayout({ children }) {
-  const pathname = usePathname();
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session && pathname !== '/login') {
-        router.push('/login');
-      } else {
-        setIsAuthorized(true);
-      }
-      setLoading(false);
-    };
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-    checkSession();
-
-    // Escuta mudanças na autenticação (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setIsAuthorized(false);
-        router.push('/login');
-      } else if (session) {
-        setIsAuthorized(true);
-      }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    return () => subscription.unsubscribe();
-  }, [pathname, router]);
-
-  // Se estiver carregando a sessão inicial
-  if (loading && pathname !== '/login') {
-    return <html lang="pt-br"><body><div style={{display:'flex', height:'100vh', alignItems:'center', justifyContent:'center', background:'#0f172a', color:'white'}}>Carregando...</div></body></html>;
-  }
-
-  // Layout simples para a página de login
-  if (pathname === '/login') {
-    return <html lang="pt-br"><body>{children}</body></html>;
-  }
-
-  // Se não estiver autorizado, não mostra o menu
-  if (!isAuthorized) return <html lang="pt-br"><body></body></html>;
-
-  const navLinks = [
-    { name: '🧭 Dashboard', path: '/' },
-    { name: '🌐 Missões (ICM)', path: '/missions' },
-    { name: '🧠 Relatos (Fricção)', path: '/history' },
-    { name: '🏛️ Atores', path: '/actors' },
-    { name: '⚙️ Decisões', path: '/decisions' },
-    { name: '📚 Lições', path: '/lessons' },
-    { name: '📄 Nova Ingestão', path: '/new-lesson' },
-  ];
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    if (error) {
+      alert('Erro na autenticação: ' + error.message);
+      setLoading(false);
+    } else {
+      router.push('/');
+    }
   };
 
   return (
-    <html lang="pt-br">
-      <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', backgroundColor: '#f1f5f9' }}>
-        <header style={{ 
-          backgroundColor: '#0f172a', 
-          color: 'white', 
-          padding: '0 30px', 
-          height: '70px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
-            <div style={{ lineHeight: '1' }}>
-              <h1 style={{ fontSize: '18px', margin: 0, letterSpacing: '1px', fontWeight: '900' }}>SLA INTELLIGENCE</h1>
-              <span style={{ fontSize: '10px', color: '#94a3b8' }}>SISTEMA DE APOIO À DECISÃO</span>
-            </div>
+    <div style={{ 
+      height: '100vh', width: '100vw', display: 'flex', 
+      alignItems: 'center', justifyContent: 'center', 
+      backgroundColor: '#0f172a', position: 'fixed', top: 0, left: 0, zIndex: 9999 
+    }}>
+      <div style={{ 
+        backgroundColor: 'white', padding: '40px', borderRadius: '12px', 
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', width: '100%', maxWidth: '400px' 
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <h1 style={{ color: '#1e293b', margin: 0, fontSize: '24px', fontWeight: '800' }}>SLA & MISSION INTELLIGENCE</h1>
+          <p style={{ color: '#64748b', marginTop: '8px', fontSize: '14px' }}>Sistema de Apoio à Decisão Multinível</p>
+        </div>
 
-            <nav style={{ display: 'flex', gap: '15px' }}>
-              {navLinks.map((link) => (
-                <Link key={link.path} href={link.path} style={{ textDecoration: 'none' }}>
-                  <div style={{ 
-                    padding: '8px 15px', 
-                    borderRadius: '6px', 
-                    fontSize: '13px', 
-                    fontWeight: '500',
-                    transition: '0.3s',
-                    color: pathname === link.path ? '#3b82f6' : '#cbd5e1',
-                    backgroundColor: pathname === link.path ? '#1e293b' : 'transparent',
-                  }}>
-                    {link.name}
-                  </div>
-                </Link>
-              ))}
-            </nav>
-          </div>
-
-          <button 
-            onClick={handleLogout}
-            style={{ 
-              backgroundColor: '#ef4444', 
-              color: 'white', 
-              border: 'none', 
-              padding: '8px 15px', 
-              borderRadius: '6px', 
-              fontSize: '12px', 
-              fontWeight: 'bold', 
-              cursor: 'pointer' 
-            }}>
-            SAIR
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <input 
+            id="email"
+            name="email"
+            type="email" 
+            placeholder="E-mail institucional" 
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+          />
+          <input 
+            id="password"
+            name="password"
+            type="password" 
+            placeholder="Senha" 
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            style={{ padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+          />
+          <button type="submit" disabled={loading} style={{ 
+            backgroundColor: loading ? '#94a3b8' : '#2563eb', 
+            color: 'white', border: 'none', padding: '14px', 
+            borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer'
+          }}>
+            {loading ? 'Verificando...' : 'Autenticar no Sistema'}
           </button>
-        </header>
-
-        <main style={{ padding: '40px', minHeight: 'calc(100vh - 70px)' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            {children}
-          </div>
-        </main>
-      </body>
-    </html>
+        </form>
+      </div>
+    </div>
   );
 }
