@@ -25,7 +25,7 @@ export async function POST(request) {
 
     // --- OPERAÇÃO DE BANCO DE DADOS EM CADEIA ---
 
-    // 3. Lógica para Missão (Busca ou Criação manual para evitar o erro de ON CONFLICT)
+    // 3. Lógica para Missão (Busca ou Criação manual)
     let missao;
     const { data: existente } = await supabase
       .from('missoes')
@@ -66,4 +66,65 @@ export async function POST(request) {
     // 5. Inserir Lição Aprendida
     const { error: lErr } = await supabase.from('licoes_aprendidas').insert([{
       missao_id: missao.id,
-      titulo_licao: data.licao
+      titulo_licao: data.licao.titulo_licao,
+      categoria_licao: data.licao.categoria_licao,
+      descricao: data.licao.descricao,
+      relevancia_estrategica: data.licao.relevancia_estrategica,
+      aplicabilidade: data.licao.aplicabilidade || []
+    }]);
+    if (lErr) console.error("Erro Lição:", lErr.message);
+
+    // 6. Inserir Decisões Críticas
+    if (data.decisoes && data.decisoes.length > 0) {
+      const decisoesComId = data.decisoes.map(d => ({
+        ...d,
+        missao_id: missao.id
+      }));
+      await supabase.from('decisoes_criticas').insert(decisoesComId);
+    }
+
+    // 7. Inserir Atores e Vincular
+    if (data.atores && data.atores.length > 0) {
+      for (const ator of data.atores) {
+        let atorFinal;
+        const { data: atorExistente } = await supabase
+          .from('atores')
+          .select('*')
+          .eq('nome_ator', ator.nome_ator)
+          .maybeSingle();
+
+        if (atorExistente) {
+          atorFinal = atorExistente;
+        } else {
+          const { data: novoAtor } = await supabase
+            .from('atores')
+            .insert([{ 
+              nome_ator: ator.nome_ator, 
+              tipo_ator: ator.tipo_ator, 
+              nivel_institucional: ator.nivel_institucional 
+            }])
+            .select()
+            .single();
+          atorFinal = novoAtor;
+        }
+        
+        if (atorFinal) {
+          await supabase.from('missao_atores').insert([{
+            missao_id: missao.id,
+            ator_id: atorFinal.id
+          }]);
+        }
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Inteligência distribuída com sucesso!",
+      missao_detectada: missao.nome_missao 
+    });
+
+  } catch (error) {
+    console.error("Erro na Rota de Análise:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
