@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pdfParse from 'pdf-parse-fork';
-import { analisarDocumento } from '../../../lib/gemini';
-import { supabase } from '../../../lib/supabaseClient';
+import { analisarDocumento } from '@/lib/gemini';
+import { supabase } from '@/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,11 +21,14 @@ export async function POST(request) {
     
     // 2. Chamada à IA (Gemini)
     const rawAnalysis = await analisarDocumento(pdfData.text);
-    const data = JSON.parse(rawAnalysis);
+    
+    // Limpeza de Markdown para garantir que o JSON seja lido corretamente
+    const cleanAnalysis = rawAnalysis.replace(/```json/g, '').replace(/```/g, '').trim();
+    const data = JSON.parse(cleanAnalysis);
 
     // --- OPERAÇÃO DE BANCO DE DADOS EM CADEIA ---
 
-    // 3. Lógica para Missão (Busca ou Criação manual)
+    // 3. Lógica para Missão (Busca ou Criação)
     let missao;
     const { data: existente } = await supabase
       .from('missoes')
@@ -51,7 +54,7 @@ export async function POST(request) {
       missao = nova;
     }
 
-    // 4. Inserir Relato Operacional
+    // 4. Inserir Relato Operacional (Base do IFO)
     const { error: rErr } = await supabase.from('relatos_operacionais').insert([{
       missao_id: missao.id,
       titulo_relato: data.relato.titulo_relato,
@@ -83,7 +86,7 @@ export async function POST(request) {
       await supabase.from('decisoes_criticas').insert(decisoesComId);
     }
 
-    // 7. Inserir Atores e Vincular
+    // 7. Inserir Atores e Vincular (Cálculo de ICM/Complexidade)
     if (data.atores && data.atores.length > 0) {
       for (const ator of data.atores) {
         let atorFinal;
@@ -96,7 +99,7 @@ export async function POST(request) {
         if (atorExistente) {
           atorFinal = atorExistente;
         } else {
-          const { data: novoAtor } = await supabase
+          const { data: novoAtor, error: aErr } = await supabase
             .from('atores')
             .insert([{ 
               nome_ator: ator.nome_ator, 
@@ -104,10 +107,12 @@ export async function POST(request) {
               nivel_institucional: ator.nivel_institucional 
             }])
             .select()
-            .single();
-          atorFinal = novoAtor;
+            .maybeSingle(); // Usando maybeSingle para evitar erro se falhar
+          
+          if (!aErr) atorFinal = novoAtor;
         }
         
+        // Vínculo Muitos-para-Muitos
         if (atorFinal) {
           await supabase.from('missao_atores').insert([{
             missao_id: missao.id,
@@ -125,6 +130,9 @@ export async function POST(request) {
 
   } catch (error) {
     console.error("Erro na Rota de Análise:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message || "Erro interno no processamento do PDF" 
+    }, { status: 500 });
   }
 }
