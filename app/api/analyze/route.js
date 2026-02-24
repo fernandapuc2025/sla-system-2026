@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import pdfParse from 'pdf-parse-fork';
-import { analisarDocumento } from '@/lib/gemini';
-import { supabase } from '@/lib/supabaseClient';
+import { NextResponse } from 'next/server';
+import pdfParse from 'pdf-parse-fork';
+import { analisarDocumento } from '../../../lib/gemini';
+import { supabase } from '../../../lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
