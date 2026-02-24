@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "next lint"
   },
-  {
   "dependencies": {
     "@google/generative-ai": "0.21.0",
     "@supabase/supabase-js": "latest",
@@ -17,7 +16,6 @@
     "pdf-parse-fork": "1.2.0",
     "react": "latest",
     "react-dom": "latest"
-  }
   },
   "devDependencies": {
     "typescript": "latest",
