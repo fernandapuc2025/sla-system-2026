@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const PYTHON_URL = "https://ideal-sniffle-4j4px4r9g5xghqxqv-8000.app.github.dev/";
+const PYTHON_URL = "https://ideal-sniffle-4j4px4r9g5xghqxqv-8000.app.github.dev";
 
 export async function POST(request) {
   try {
