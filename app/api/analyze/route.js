@@ -1,42 +1,79 @@
-export async function analisarDocumento(texto) {
-  const apiKey = process.env.GOOGLE_API_KEY?.trim();
-  if (!apiKey) throw new Error("A chave GOOGLE_API_KEY não foi encontrada.");
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { analisarDocumento } from '@/lib/gemini';
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
-  const payload = {
-    contents: [{
-      parts: [{
-        text: `Você é um motor de inteligência ontológica para o sistema SEAG. Sua tarefa é converter relatórios de missões em dados estruturados.
+const PYTHON_URL = "https://ideal-sniffle-4j4px4r9g5xghqxqv-8000.app.github.dev";
 
-        TEXTO PARA ANÁLISE:
-        ${texto}
+export async function POST(request) {
+  try {
+    const { texto } = await request.json();
 
-        DIRETRIZES TÉCNICAS ADICIONAIS PARA HEATMAP:
-        1. Identifique pares de atores que tiveram conflitos, divergências ou falta de coordenação.
-        2. Atribua um nível de intensidade de 1 a 10 para cada conflito.
+    // 1. Chama o Especialista (Gemini)
+    const dadosExtraidos = await analisarDocumento(texto);
 
-        ESTRUTURA JSON DE SAÍDA:
-        {
-          "missao": { "nome_missao": "", "tipo_operacao": "", "teatro_local": "", "status": "Ativa" },
-          "relato": { "titulo_relato": "", "descricao_evento": "", "pontuacao_friccao": 5 },
-          "atores": [ { "nome_ator": "", "nivel_institucional": "Estratégico" } ],
-          "conflitos": [ { "ator_a_nome": "", "ator_b_nome": "", "nivel": 7, "causa": "" } ],
-          "licao": { "titulo_licao": "", "descricao": "" },
-          "decisoes": [ { "descricao_decisao": "", "quem_decidiu": "" } ]
-        }`
-      }]
-    }],
-    generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
-  };
+    // 2. Chama o Cérebro (Python no Codespaces)
+    const responseML = await fetch(`${PYTHON_URL}/analyze/metrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        missao_id: "temp",
+        atores: dadosExtraidos.atores.map(a => ({ id: a.nome_ator, nivel: a.nivel_institucional })),
+        friccao_total: dadosExtraidos.relato.pontuacao_friccao
+      })
+    });
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+    if (!responseML.ok) throw new Error("O servidor Python está offline.");
+    const metricasML = await responseML.json();
 
-  const data = await response.json();
-  const resultText = data.candidates[0].content.parts[0].text;
-  return JSON.parse(resultText);
+    // 3. Salva no Supabase (Fluxo de Governança)
+    
+    // A. Missão
+    const { data: missaoObj } = await supabase
+      .from('missoes')
+      .upsert({ nome: dadosExtraidos.missao.nome_missao, status: dadosExtraidos.missao.status })
+      .select().single();
+
+    // B. Relato
+    const { data: relatoObj } = await supabase
+      .from('relatos_operacionais')
+      .insert({ 
+        missao_id: missaoObj.id, 
+        titulo: dadosExtraidos.relato.titulo_relato,
+        texto_bruto: texto 
+      }).select().single();
+
+    // C. Indicadores (ICM)
+    await supabase.from('indicadores_missao').insert({
+      relato_id: relatoObj.id,
+      icm_valor: metricasML.icm,
+      momentum_valor: (metricasML.momentum === "Estável" ? 1.0 : 2.0),
+      friccao_total: dadosExtraidos.relato.pontuacao_friccao
+    });
+
+    // D. Conflitos (Matriz)
+    if (dadosExtraidos.conflitos.length > 0) {
+      for (const conf of dadosExtraidos.conflitos) {
+        await supabase.from('matriz_friccao_atores').insert({
+          missao_id: missaoObj.id,
+          fator_gerador: conf.causa,
+          intensidade_conflito: conf.nivel
+        });
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      icm: metricasML.icm, 
+      momentum: metricasML.momentum 
+    });
+
+  } catch (error) {
+    console.error("ERRO NO PROCESSAMENTO:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
