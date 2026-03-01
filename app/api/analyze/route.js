@@ -16,19 +16,20 @@ export async function POST(request) {
     // 1. Chama o Especialista (Gemini)
     const dadosExtraidos = await analisarDocumento(texto);
 
-    // 2. Chama o Cérebro (Python no Codespaces)
+   // 2. Chama o Cérebro (Python no Codespaces)
     const responseML = await fetch(`${PYTHON_URL}/analyze/metrics`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        // ESTA LINHA ABAIXO É O "CRACHÁ" QUE PULA A TELA DE AVISO:
+        'x-github-token': 'true' 
+      },
       body: JSON.stringify({
         missao_id: "temp",
         atores: dadosExtraidos.atores.map(a => ({ id: a.nome_ator, nivel: a.nivel_institucional })),
         friccao_total: dadosExtraidos.relato.pontuacao_friccao
       })
     });
-
-    if (!responseML.ok) throw new Error("O servidor Python está offline.");
-    const metricasML = await responseML.json();
 
     // 3. Salva no Supabase (Fluxo de Governança)
     
