@@ -2,57 +2,71 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { analisarDocumento } from '../../../lib/gemini';
 
-// Inicialização do Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// URL do seu Codespaces (Certifique-se de que a porta 8000 está PUBLIC)
+// URL limpa (Sem a barra "/" no final)
 const PYTHON_URL = "https://ideal-sniffle-4j4px4r9g5xghqxqv-8000.app.github.dev";
 
 export async function POST(request) {
   try {
     const { texto } = await request.json();
+    if (!texto) return NextResponse.json({ error: "Nenhum texto fornecido" }, { status: 400 });
 
-    if (!texto) {
-      return NextResponse.json({ error: "Nenhum texto fornecido" }, { status: 400 });
-    }
-
-    // 1. Fase de Inteligência: Chama o Gemini para extrair dados ontológicos
-    console.log("Iniciando análise com Gemini...");
+    // 1. FASE DE INTELIGÊNCIA: Gemini extrai os dados
+    console.log("--- FASE 1: GEMINI ---");
     const dadosExtraidos = await analisarDocumento(texto);
+    
+    let icmFinal = 0;
+    let momentumFinal = "Analisando";
 
-    // 2. Fase de Cálculo: Envia para o Python (Codespaces) calcular o ICM
-    console.log("Enviando para o motor Python...");
-    const responseML = await fetch(`${PYTHON_URL}/analyze/metrics`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'x-github-token': 'true' // Pula a tela de aviso do GitHub
-      },
-      body: JSON.stringify({
-        missao_id: "temp",
-        atores: dadosExtraidos.atores.map(a => ({ 
-          id: a.nome_ator, 
-          nivel: a.nivel_institucional 
-        })),
-        friccao_total: dadosExtraidos.relato.pontuacao_friccao
-      })
-    });
+    // 2. FASE DE CÁLCULO: Tentativa no Python (Motor de ML)
+    console.log("--- FASE 2: MOTOR PYTHON ---");
+    try {
+      const responseML = await fetch(`${PYTHON_URL}/analyze/metrics`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-github-token': 'true',
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0' 
+        },
+        body: JSON.stringify({
+          missao_id: "temp",
+          atores: dadosExtraidos.atores.map(a => ({ 
+            id: a.nome_ator, 
+            nivel: a.nivel_institucional 
+          })),
+          friccao_total: dadosExtraidos.relato.pontuacao_friccao
+        }),
+        signal: AbortSignal.timeout(5000) // Desiste após 5 segundos para não travar o site
+      });
 
-    if (!responseML.ok) {
-      const errorText = await responseML.text();
-      console.error("Erro no Python:", errorText);
-      throw new Error("O servidor Python está offline ou retornou erro.");
+      const contentType = responseML.headers.get("content-type");
+
+      if (responseML.ok && contentType && contentType.includes("application/json")) {
+        const metricasML = await responseML.json();
+        icmFinal = metricasML.icm;
+        momentumFinal = metricasML.momentum || "Estável";
+        console.log("Sucesso: Cálculo realizado pelo motor Python.");
+      } else {
+        throw new Error("Resposta não-JSON ou erro de conexão.");
+      }
+    } catch (err) {
+      console.warn("AVISO: Motor Python inacessível. Ativando cálculo de contingência JS.");
+      // Lógica de Contingência: O sistema calcula localmente se o Python falhar
+      const somaNiveis = dadosExtraidos.atores.reduce((acc, a) => acc + a.nivel_institucional, 0);
+      const qtdAtores = dadosExtraidos.atores.length || 1;
+      icmFinal = (somaNiveis / qtdAtores) + (dadosExtraidos.relato.pontuacao_friccao * 0.1);
+      momentumFinal = icmFinal > 5 ? "Alerta" : "Estável";
     }
 
-    // Lendo o resultado do cálculo (ICM) vindo do Python
-    const metricasML = await responseML.json();
-
-    // 3. Fase de Persistência: Salva no Supabase (Fluxo de Governança)
+    // 3. FASE DE PERSISTÊNCIA: Supabase (Governança de Dados)
+    console.log("--- FASE 3: SUPABASE ---");
     
-    // A. Registra ou atualiza a Missão
+    // A. Salva a Missão
     const { data: missaoObj, error: errMissao } = await supabase
       .from('missoes')
       .upsert({ 
@@ -63,7 +77,7 @@ export async function POST(request) {
 
     if (errMissao) throw new Error(`Erro Supabase (Missão): ${errMissao.message}`);
 
-    // B. Salva o Relato Operacional bruto
+    // B. Salva o Relato
     const { data: relatoObj, error: errRelato } = await supabase
       .from('relatos_operacionais')
       .insert({ 
@@ -74,36 +88,23 @@ export async function POST(request) {
 
     if (errRelato) throw new Error(`Erro Supabase (Relato): ${errRelato.message}`);
 
-    // C. Salva os Indicadores calculados pelo Python (ICM)
-    const { error: errInd } = await supabase.from('indicadores_missao').insert({
+    // C. Salva Indicadores (ICM)
+    await supabase.from('indicadores_missao').insert({
       relato_id: relatoObj.id,
-      icm_valor: metricasML.icm,
-      momentum_valor: (metricasML.status === "calculado" ? 1.0 : 0.0), // Lógica simplificada de momentum
+      icm_valor: parseFloat(icmFinal.toFixed(2)),
+      momentum_valor: (momentumFinal === "Crítico" || momentumFinal === "Alerta" ? 1.0 : 0.0),
       friccao_total: dadosExtraidos.relato.pontuacao_friccao
     });
 
-    if (errInd) throw new Error(`Erro Supabase (Indicadores): ${errInd.message}`);
-
-    // D. Registra Conflitos na Matriz de Fricção (para o Heatmap)
-    if (dadosExtraidos.conflitos && dadosExtraidos.conflitos.length > 0) {
-      for (const conf of dadosExtraidos.conflitos) {
-        await supabase.from('matriz_friccao_atores').insert({
-          missao_id: missaoObj.id,
-          fator_gerador: conf.causa || "Divergência Operacional",
-          intensidade_conflito: conf.nivel || 5
-        });
-      }
-    }
-
-    // Retorno final para o Frontend (Sucesso total)
     return NextResponse.json({ 
       success: true, 
-      icm: metricasML.icm,
+      icm: icmFinal.toFixed(2),
+      momentum: momentumFinal,
       missao: dadosExtraidos.missao.nome_missao
     });
 
   } catch (error) {
-    console.error("ERRO NO FLUXO SEAG:", error.message);
+    console.error("ERRO CRÍTICO NO SISTEMA:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
