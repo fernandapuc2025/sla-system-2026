@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 // URL limpa (Sem a barra "/" no final)
-const PYTHON_URL = "https://ideal-sniffle-4j4px4r9g5xghqxqv-8000.app.github.dev";
+const PYTHON_URL = "https://seag-python-brain.onrender.com";
 
 export async function POST(request) {
   try {
