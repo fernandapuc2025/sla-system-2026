@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/actors/page": "app/actors/page.js",
+  "/analytics/page": "app/analytics/page.js",
+  "/api/analyze/route": "app/api/analyze/route.js",
+  "/decisions/page": "app/decisions/page.js",
+  "/history/[id]/page": "app/history/[id]/page.js",
+  "/history/page": "app/history/page.js",
+  "/lessons/page": "app/lessons/page.js",
+  "/login/page": "app/login/page.js",
+  "/missions/page": "app/missions/page.js",
+  "/new-lesson/page": "app/new-lesson/page.js",
+  "/page": "app/page.js",
+  "/risk/page": "app/risk/page.js",
+  "/settings/page": "app/settings/page.js"
+}

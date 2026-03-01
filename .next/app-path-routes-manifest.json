@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/actors/page": "/actors",
+  "/analytics/page": "/analytics",
+  "/api/analyze/route": "/api/analyze",
+  "/decisions/page": "/decisions",
+  "/history/[id]/page": "/history/[id]",
+  "/history/page": "/history",
+  "/lessons/page": "/lessons",
+  "/login/page": "/login",
+  "/missions/page": "/missions",
+  "/new-lesson/page": "/new-lesson",
+  "/page": "/",
+  "/risk/page": "/risk",
+  "/settings/page": "/settings"
+}

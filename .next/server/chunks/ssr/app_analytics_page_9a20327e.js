@@ -1,0 +1,10 @@
+module.exports=[40997,a=>{"use strict";var b=a.i(87924),c=a.i(72131),d=a.i(966);function e(){let[a,e]=(0,c.useState)([]),[f,g]=(0,c.useState)(!0);return(0,c.useEffect)(()=>{!async function(){let{data:a,error:b}=await d.supabase.from("relatos_operacionais").select(`
+          id, 
+          titulo_relato, 
+          pontuacao_friccao, 
+          missoes (
+            nome_missao
+          )
+        `),{data:c}=await d.supabase.from("dashboard_analitico_missoes").select("id, icm_complexidade");!b&&a&&c&&e(a.map(a=>{let b=c.find(b=>b.id===a.missao_id);return{id:a.id,name:a.titulo_relato,missao:a.missoes?.nome_missao,x:b?.icm_complexidade||5,y:a.pontuacao_friccao||0}})),g(!1)}()},[]),(0,b.jsxs)("div",{style:{padding:"30px"},children:[(0,b.jsxs)("header",{style:{marginBottom:"40px"},children:[(0,b.jsx)("h1",{style:{fontSize:"26px",fontWeight:"800",color:"#1e293b"},children:"📊 Matriz de Fricção vs Complexidade"}),(0,b.jsx)("p",{style:{color:"#64748b"},children:"Posicionamento de incidentes baseado no ICM da Missão e na Fricção do Relato."})]}),(0,b.jsx)("div",{style:{backgroundColor:"white",padding:"40px",borderRadius:"20px",border:"1px solid #e2e8f0",position:"relative",height:"600px",boxShadow:"0 10px 15px -3px rgba(0,0,0,0.1)"},children:(0,b.jsxs)("div",{style:{position:"absolute",left:"60px",bottom:"60px",right:"40px",top:"40px",borderLeft:"2px solid #cbd5e1",borderBottom:"2px solid #cbd5e1"},children:[a.map(a=>(0,b.jsx)("div",{title:`${a.name} [Miss\xe3o: ${a.missao}]`,style:{position:"absolute",left:`${a.x/30*100}%`,bottom:`${a.y/10*100}%`,width:"14px",height:"14px",backgroundColor:a.y>7?"#ef4444":"#3b82f6",borderRadius:"50%",transform:"translate(-50%, 50%)",cursor:"pointer",border:"2px solid white"}},a.id)),(0,b.jsx)("div",{style:{position:"absolute",bottom:"-40px",left:"50%",transform:"translateX(-50%)",fontWeight:"bold",color:"#64748b",fontSize:"12px"},children:"ÍNDICE DE COMPLEXIDADE MULTINÍVEL (ICM)"})]})})]})}a.s(["default",()=>e,"dynamic",0,"force-dynamic"])}];
+
+//# sourceMappingURL=app_analytics_page_9a20327e.js.map
